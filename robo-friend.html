@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ともだちロボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --peach:#FFD4B3; --orange:#FF9470; --dark-orange:#E8896A;
+  --bg:#FFF8F2; --white:#fff; --gray:#999; --text:#444;
+  --blue:#64B5F6; --green:#66BB6A;
+}
+body {
+  background:var(--bg);
+  font-family:'Nunito','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;
+  position:fixed; inset:0; overflow:hidden;
+}
+
+/* ── BACKGROUND BLOBS ── */
+.blobs { position:fixed; inset:0; pointer-events:none; z-index:0; }
+.blob { position:absolute; border-radius:50%; filter:blur(70px); opacity:.28; }
+.b1 { width:420px;height:420px;background:#FFD6A5;top:-120px;left:-120px; }
+.b2 { width:380px;height:380px;background:#C8FAC0;bottom:-100px;right:-100px; }
+.b3 { width:320px;height:320px;background:#BDE0FE;top:50%;left:50%;transform:translate(-50%,-50%); }
+
+/* ── SCREENS ── */
+.screen {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:24px; opacity:0; pointer-events:none; transition:opacity .3s; z-index:1;
+}
+.screen.active { opacity:1; pointer-events:all; }
+
+/* ── SETUP ── */
+#screen-setup { gap:0; }
+.setup-card {
+  background:var(--white); border-radius:28px; padding:32px 28px;
+  width:100%; max-width:420px;
+  box-shadow:0 12px 40px rgba(0,0,0,.08);
+}
+.setup-card h2 { font-size:21px; color:var(--dark-orange); font-weight:900; margin-bottom:6px; }
+.setup-card .sub { font-size:13px; color:var(--gray); margin-bottom:22px; line-height:1.6; }
+.fg { margin-bottom:14px; }
+.fg label { display:block; font-size:13px; font-weight:700; color:var(--text); margin-bottom:5px; }
+.fg input, .fg textarea {
+  width:100%; padding:11px 15px; border:2px solid #eee; border-radius:12px;
+  font-size:14px; font-family:inherit; outline:none; transition:border-color .2s;
+  background:var(--white);
+}
+.fg input:focus, .fg textarea:focus { border-color:var(--orange); }
+.fg textarea { resize:none; height:78px; }
+.btn-p {
+  width:100%; padding:15px; background:linear-gradient(135deg,#FF9470,#FFB84D);
+  color:var(--white); border:none; border-radius:16px;
+  font-size:16px; font-weight:900; cursor:pointer; font-family:inherit;
+  box-shadow:0 6px 20px rgba(255,148,112,.4); transition:transform .15s;
+}
+.btn-p:active { transform:scale(.97); }
+.btn-s {
+  padding:11px 22px; background:var(--white); color:var(--text);
+  border:2px solid #eee; border-radius:12px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit;
+}
+
+/* ── NAMING OVERLAY ── */
+#overlay-naming {
+  display:none; position:fixed; inset:0; z-index:30;
+  background:rgba(255,248,242,.96); backdrop-filter:blur(4px);
+  flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:24px;
+}
+#overlay-naming.active { display:flex; }
+.naming-title { font-size:23px; font-weight:900; color:var(--dark-orange); text-align:center; line-height:1.5; }
+#naming-input {
+  font-size:32px; font-weight:900; text-align:center; border:none;
+  border-bottom:4px solid var(--orange); background:transparent; outline:none;
+  width:220px; color:var(--text); font-family:inherit; padding:8px 4px;
+}
+
+/* ── MAIN SCREEN ── */
+#screen-main { gap:0; }
+.top-bar { position:absolute; top:20px; right:20px; }
+.parent-btn {
+  background:var(--white); border:none; border-radius:999px;
+  padding:10px 18px; font-size:13px; color:var(--gray); font-weight:700;
+  cursor:pointer; font-family:inherit;
+  box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+.character-area {
+  display:flex; flex-direction:column; align-items:center;
+  gap:14px; flex:1; justify-content:center;
+}
+
+.bubble {
+  background:var(--white); border-radius:22px; padding:14px 22px;
+  font-size:17px; color:#555; font-weight:700;
+  box-shadow:0 8px 28px rgba(0,0,0,.07);
+  max-width:290px; text-align:center; line-height:1.6;
+  position:relative; min-height:56px;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .25s;
+}
+.bubble::after {
+  content:''; position:absolute; bottom:-12px; left:50%; transform:translateX(-50%);
+  border:8px solid transparent; border-top-color:var(--white); border-bottom:none;
+}
+
+/* CHARACTER */
+.char-wrap {
+  animation:float 3.6s ease-in-out infinite;
+  cursor:pointer;
+  filter:drop-shadow(0 22px 32px rgba(255,160,100,.22));
+  transition:filter .3s;
+  -webkit-user-select:none; user-select:none;
+}
+.char-wrap.listening {
+  filter:drop-shadow(0 0 32px rgba(100,181,246,.7));
+  animation:float-glow 1.6s ease-in-out infinite;
+}
+.char-wrap.talking {
+  filter:drop-shadow(0 0 32px rgba(102,187,106,.65));
+  animation:float-talk .5s ease-in-out infinite;
+}
+.char-wrap.thinking {
+  animation:float-think 1s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)rotate(-1deg)} 50%{transform:translateY(-16px)rotate(1deg)} }
+@keyframes float-glow { 0%,100%{transform:translateY(0)scale(1)} 50%{transform:translateY(-8px)scale(1.03)} }
+@keyframes float-talk { 0%,100%{transform:translateY(-4px)} 50%{transform:translateY(4px)} }
+@keyframes float-think { 0%,100%{transform:translateY(0)rotate(-2deg)} 50%{transform:translateY(-6px)rotate(2deg)} }
+
+/* Eye blink */
+.eld { transform-origin:78px 110px; animation:blink 4.2s ease-in-out infinite; }
+.erd { transform-origin:122px 110px; animation:blink 4.2s ease-in-out infinite .06s; }
+@keyframes blink { 0%,88%,100%{transform:scaleY(1)} 93%{transform:scaleY(.05)} }
+/* Antennae */
+.al { transform-origin:72px 55px; animation:wig 2.8s ease-in-out infinite; }
+.ar { transform-origin:128px 55px; animation:wig 2.8s ease-in-out infinite .35s; }
+@keyframes wig { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+/* Mouth talking */
+.char-wrap.talking .mouth { animation:talk .28s ease-in-out infinite alternate; transform-origin:100px 150px; }
+@keyframes talk { from{transform:scaleY(1)} to{transform:scaleY(1.6) translateY(2px)} }
+
+.char-name {
+  font-size:20px; color:var(--dark-orange); font-weight:900; letter-spacing:.06em;
+  background:var(--white); padding:8px 28px; border-radius:999px;
+  box-shadow:0 4px 16px rgba(244,132,95,.18);
+}
+.tap-hint { font-size:13px; color:#ccc; font-weight:700; letter-spacing:.04em; }
+
+/* Status bar */
+.status-bar {
+  position:absolute; bottom:36px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:8px;
+}
+.sdot { width:10px;height:10px;border-radius:50%;background:#ddd;transition:background .3s; }
+.sdot.listening { background:var(--blue); animation:pulse 1s infinite; }
+.sdot.talking { background:var(--green); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.stxt { font-size:13px; color:var(--gray); font-weight:700; }
+
+/* ── PARENT LOGIN ── */
+#screen-parent-login { gap:10px; }
+.lock-ico { font-size:52px; }
+.phead { font-size:18px; font-weight:900; color:var(--dark-orange); }
+.psub { font-size:13px; color:var(--gray); }
+.pin-row { display:flex; gap:14px; margin:12px 0 4px; }
+.pin-dot { width:18px;height:18px;border-radius:50%;border:2.5px solid var(--orange);transition:background .15s; }
+.pin-dot.on { background:var(--orange); }
+.pin-err { font-size:13px; color:#ff6b6b; font-weight:700; height:18px; }
+.numpad { display:grid; grid-template-columns:repeat(3,72px); gap:12px; margin-top:10px; }
+.nbtn {
+  width:72px;height:72px;border-radius:50%;border:none;
+  background:var(--white); font-size:24px; font-weight:700; color:var(--text);
+  cursor:pointer; font-family:inherit;
+  box-shadow:0 3px 10px rgba(0,0,0,.07); transition:transform .1s;
+}
+.nbtn:active { transform:scale(.9); background:var(--peach); }
+.nbtn.ok { background:#FFE8D6; font-size:20px; }
+
+/* ── PARENT SETTINGS ── */
+#screen-parent-settings { justify-content:flex-start; padding:0; }
+.ps-header {
+  width:100%; background:var(--white); padding:20px 20px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,.06); position:sticky; top:0; z-index:2;
+}
+.ps-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.ps-header h2 { font-size:20px; font-weight:900; color:var(--dark-orange); }
+.tabs { display:flex; gap:0; }
+.tbtn {
+  padding:10px 14px; background:none; border:none; border-bottom:3px solid transparent;
+  font-size:14px; font-weight:700; color:var(--gray); cursor:pointer; font-family:inherit;
+  transition:color .2s,border-color .2s;
+}
+.tbtn.active { color:var(--dark-orange); border-bottom-color:var(--orange); }
+
+.ps-body { flex:1; overflow-y:auto; width:100%; padding:20px; max-width:480px; margin:0 auto; }
+.tpanel { display:none; }
+.tpanel.active { display:block; }
+
+.sec { margin-bottom:24px; }
+.sec h3 { font-size:15px; font-weight:900; color:var(--text); margin-bottom:12px; }
+
+.rem-list { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.rem-item {
+  background:var(--white); border-radius:14px; padding:14px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.rem-lbl { font-size:15px; font-weight:700; color:var(--text); }
+.rem-time { font-size:13px; color:var(--gray); margin-top:2px; }
+.rem-del { background:none; border:none; font-size:20px; cursor:pointer; padding:4px; color:#ffaaaa; }
+.add-rem-form {
+  background:var(--white); border-radius:14px; padding:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  display:flex; flex-direction:column; gap:10px;
+}
+.log-item {
+  background:var(--white); border-radius:14px; padding:14px 16px;
+  margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.log-date { font-size:12px; color:var(--gray); margin-bottom:8px; font-weight:700; }
+.log-badge {
+  display:inline-block; background:#FFF3CD; color:#E65100;
+  border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700; margin-bottom:8px;
+}
+.lmsg { margin-bottom:5px; font-size:14px; line-height:1.55; }
+.lmsg .role { font-weight:700; font-size:12px; margin-right:4px; }
+.lmsg.user { color:var(--dark-orange); }
+.lmsg.assistant { color:var(--text); }
+.no-log { text-align:center; color:var(--gray); font-size:14px; padding:36px 16px; font-weight:700; line-height:1.8; }
+
+/* ── SPARKLES ── */
+.sparkle {
+  position:fixed; pointer-events:none; font-size:20px; z-index:999;
+  animation:sfly .8s ease-out forwards;
+}
+@keyframes sfly { from{opacity:1;transform:translateY(0)scale(1)} to{opacity:0;transform:translateY(-75px)scale(.3)} }
+
+/* ── REMINDER ALERT ── */
+.rem-alert {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  background:var(--orange); color:var(--white);
+  padding:12px 26px; border-radius:999px; font-size:15px; font-weight:700;
+  z-index:50; box-shadow:0 6px 24px rgba(255,148,112,.45);
+  animation:slideUp .4s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap; max-width:90vw;
+}
+@keyframes slideUp { from{transform:translateX(-50%) translateY(20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+
+/* back btn */
+.back-btn {
+  background:var(--white); border:none; border-radius:999px;
+  padding:10px 18px; font-size:13px; font-weight:700; color:var(--gray);
+  cursor:pointer; font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+</style>
+</head>
+<body>
+
+<!-- BG -->
+<div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<!-- ===== SETUP ===== -->
+<div class="screen active" id="screen-setup">
+  <div class="setup-card">
+    <h2>🔧 はじめての設定</h2>
+    <p class="sub">保護者の方が設定してください。<br>入力した情報はこのデバイス内にのみ保存されます。</p>
+    <div class="fg">
+      <label>Anthropic APIキー</label>
+      <input type="password" id="s-ant" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+    <div class="fg">
+      <label>OpenAI APIキー</label>
+      <input type="password" id="s-oai" placeholder="sk-..." autocomplete="off">
+    </div>
+    <div class="fg">
+      <label>保護者用パスワード（数字4桁）</label>
+      <input type="password" id="s-pw" placeholder="例：1234" maxlength="4" inputmode="numeric">
+    </div>
+    <div class="fg">
+      <label>ロボットの性格・追加設定（任意）</label>
+      <textarea id="s-per" placeholder="例：少しおっちょこちょいで、おやじギャグが好き。虫が大好き。"></textarea>
+    </div>
+    <button class="btn-p" onclick="completeSetup()">はじめる！</button>
+  </div>
+</div>
+
+<!-- ===== NAMING OVERLAY ===== -->
+<div id="overlay-naming">
+  <div style="font-size:80px">🌟</div>
+  <div class="naming-title">ぼくのなまえを<br>つけてね！</div>
+  <input id="naming-input" type="text" placeholder="なまえ…" maxlength="10" autocomplete="off"
+    onkeydown="if(event.key==='Enter')setCharName()">
+  <button class="btn-p" style="max-width:200px" onclick="setCharName()">けってい！</button>
+</div>
+
+<!-- ===== MAIN (CHILD) ===== -->
+<div class="screen" id="screen-main">
+  <div class="top-bar">
+    <button class="parent-btn" onclick="goParent()">🔒 ほごしゃ</button>
+  </div>
+
+  <div class="character-area">
+    <div class="bubble" id="bubble">やあ！タップして話しかけてね！</div>
+
+    <div class="char-wrap" id="char" onclick="onTap(event)">
+      <svg width="200" height="220" viewBox="0 0 200 220" overflow="visible">
+        <!-- Antennae -->
+        <g class="al"><line x1="72" y1="55" x2="68" y2="22" stroke="#FFB085" stroke-width="4" stroke-linecap="round"/><circle cx="67" cy="18" r="8" fill="#FF9470"/><circle cx="67" cy="18" r="4" fill="#FFD6C4"/></g>
+        <g class="ar"><line x1="128" y1="55" x2="132" y2="22" stroke="#FFB085" stroke-width="4" stroke-linecap="round"/><circle cx="133" cy="18" r="8" fill="#FF9470"/><circle cx="133" cy="18" r="4" fill="#FFD6C4"/></g>
+        <!-- Body -->
+        <ellipse cx="100" cy="125" rx="70" ry="75" fill="#FFD4B3"/>
+        <ellipse cx="82" cy="88" rx="22" ry="16" fill="white" opacity=".35"/>
+        <!-- Cheeks -->
+        <circle cx="50" cy="130" r="18" fill="#FFB3A0" opacity=".55"/>
+        <circle cx="150" cy="130" r="18" fill="#FFB3A0" opacity=".55"/>
+        <!-- Left eye -->
+        <circle cx="78" cy="110" r="16" fill="white"/>
+        <circle cx="80" cy="112" r="9" fill="#3D2B1F"/>
+        <circle cx="84" cy="108" r="4" fill="white"/>
+        <ellipse class="eld" cx="78" cy="97" rx="16" ry="13" fill="#FFD4B3"/>
+        <!-- Right eye -->
+        <circle cx="122" cy="110" r="16" fill="white"/>
+        <circle cx="124" cy="112" r="9" fill="#3D2B1F"/>
+        <circle cx="128" cy="108" r="4" fill="white"/>
+        <ellipse class="erd" cx="122" cy="97" rx="16" ry="13" fill="#FFD4B3"/>
+        <!-- Nose -->
+        <ellipse cx="100" cy="128" rx="5" ry="3.5" fill="#E8896A"/>
+        <!-- Mouth -->
+        <path class="mouth" id="mouth" d="M84 142 Q100 158 116 142" fill="none" stroke="#E8896A" stroke-width="4" stroke-linecap="round"/>
+        <!-- Arms -->
+        <ellipse cx="32" cy="148" rx="18" ry="13" fill="#FFD4B3" transform="rotate(-20 32 148)"/>
+        <ellipse cx="168" cy="148" rx="18" ry="13" fill="#FFD4B3" transform="rotate(20 168 148)"/>
+        <!-- Feet -->
+        <ellipse cx="76" cy="194" rx="20" ry="12" fill="#FFB085"/>
+        <ellipse cx="124" cy="194" rx="20" ry="12" fill="#FFB085"/>
+      </svg>
+    </div>
+
+    <div class="char-name" id="char-name-label">…</div>
+    <div class="tap-hint">タップして話しかけてね</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="sdot" id="sdot"></div>
+    <div class="stxt" id="stxt"></div>
+  </div>
+</div>
+
+<!-- ===== PARENT LOGIN ===== -->
+<div class="screen" id="screen-parent-login">
+  <button class="back-btn" onclick="showScreen('main')" style="position:absolute;top:20px;left:20px;">← もどる</button>
+  <div class="lock-ico">🔒</div>
+  <div class="phead">ほごしゃメニュー</div>
+  <div class="psub">パスワードを入力してください</div>
+  <div class="pin-row" id="pin-row">
+    <div class="pin-dot" id="p0"></div><div class="pin-dot" id="p1"></div>
+    <div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div>
+  </div>
+  <div class="pin-err" id="pin-err"></div>
+  <div class="numpad">
+    <button class="nbtn" onclick="pin('1')">1</button><button class="nbtn" onclick="pin('2')">2</button><button class="nbtn" onclick="pin('3')">3</button>
+    <button class="nbtn" onclick="pin('4')">4</button><button class="nbtn" onclick="pin('5')">5</button><button class="nbtn" onclick="pin('6')">6</button>
+    <button class="nbtn" onclick="pin('7')">7</button><button class="nbtn" onclick="pin('8')">8</button><button class="nbtn" onclick="pin('9')">9</button>
+    <button class="nbtn" onclick="pin('del')" style="font-size:15px">消去</button>
+    <button class="nbtn" onclick="pin('0')">0</button>
+    <button class="nbtn ok" onclick="pin('ok')">✓</button>
+  </div>
+</div>
+
+<!-- ===== PARENT SETTINGS ===== -->
+<div class="screen" id="screen-parent-settings">
+  <div class="ps-header">
+    <div class="ps-header-row">
+      <h2>🔧 ほごしゃメニュー</h2>
+      <button class="back-btn" onclick="showScreen('main')">もどる</button>
+    </div>
+    <div class="tabs">
+      <button class="tbtn active" id="tb-char" onclick="showTab('char')">キャラ</button>
+      <button class="tbtn" id="tb-rem" onclick="showTab('rem')">リマインダー</button>
+      <button class="tbtn" id="tb-log" onclick="showTab('log')">かいわログ</button>
+    </div>
+  </div>
+  <div class="ps-body">
+
+    <!-- Char tab -->
+    <div class="tpanel active" id="tp-char">
+      <div class="sec">
+        <h3>キャラクターの名前</h3>
+        <div class="fg"><input type="text" id="p-name" maxlength="10" placeholder="名前"></div>
+      </div>
+      <div class="sec">
+        <h3>性格・話し方の設定</h3>
+        <div class="fg"><textarea id="p-per" style="height:110px" placeholder="例：少しおっちょこちょいで、おやじギャグが好き。虫が大好き。"></textarea></div>
+      </div>
+      <button class="btn-p" onclick="saveCharSettings()">保存する</button>
+    </div>
+
+    <!-- Reminders tab -->
+    <div class="tpanel" id="tp-rem">
+      <div class="sec">
+        <h3>リマインダー一覧</h3>
+        <div class="rem-list" id="rem-list"></div>
+        <button class="btn-p" id="btn-add-rem" onclick="showAddRem()">＋ 追加する</button>
+        <div class="add-rem-form" id="add-rem-form" style="display:none">
+          <div class="fg"><label>内容（ロボットが話す言葉）</label><input type="text" id="rem-lbl" placeholder="例：そろそろ宿題の時間だよ！"></div>
+          <div class="fg"><label>時間</label><input type="time" id="rem-time"></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn-p" style="flex:1" onclick="addRem()">追加</button>
+            <button class="btn-s" onclick="hideAddRem()">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs tab -->
+    <div class="tpanel" id="tp-log">
+      <div id="log-container"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+const S = {
+  charName:'', password:'', antKey:'', oaiKey:'', personality:'',
+  reminders:[], logs:[], history:[], pinBuf:'',
+  listening:false, speaking:false, awaitShare:false,
+  pendingShare:[], currentAudio:null, firedToday:new Set(),
+};
+
+// ─── INIT ───
+window.addEventListener('DOMContentLoaded', () => {
+  load();
+  if (!S.antKey || !S.oaiKey || !S.password) {
+    showScreen('setup');
+  } else {
+    showScreen('main');
+    updateNameLabel();
+    if (!S.charName) setTimeout(showNaming, 500);
+  }
+  setInterval(checkReminders, 30000);
+  checkReminders();
+});
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('robo-v2') || '{}');
+    S.charName = d.charName||''; S.password = d.password||'';
+    S.antKey = d.antKey||''; S.oaiKey = d.oaiKey||'';
+    S.personality = d.personality||'';
+    S.reminders = d.reminders||[]; S.logs = d.logs||[];
+  } catch(e){}
+}
+function save() {
+  localStorage.setItem('robo-v2', JSON.stringify({
+    charName:S.charName, password:S.password, antKey:S.antKey,
+    oaiKey:S.oaiKey, personality:S.personality,
+    reminders:S.reminders, logs:S.logs,
+  }));
+}
+
+// ─── SCREENS ───
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name)?.classList.add('active');
+  if (name === 'parent-settings') populateSettings();
+}
+
+// ─── SETUP ───
+function completeSetup() {
+  const ant = document.getElementById('s-ant').value.trim();
+  const oai = document.getElementById('s-oai').value.trim();
+  const pw  = document.getElementById('s-pw').value.trim();
+  const per = document.getElementById('s-per').value.trim();
+  if (!ant) return alert('AnthropicのAPIキーを入力してください');
+  if (!oai) return alert('OpenAIのAPIキーを入力してください');
+  if (!/^\d{4}$/.test(pw)) return alert('パスワードは数字4桁で入力してください');
+  S.antKey = ant; S.oaiKey = oai; S.password = pw; S.personality = per;
+  save(); showScreen('main'); setTimeout(showNaming, 400);
+}
+
+// ─── NAMING ───
+function showNaming() {
+  document.getElementById('overlay-naming').classList.add('active');
+  setTimeout(() => document.getElementById('naming-input').focus(), 300);
+}
+function setCharName() {
+  const n = document.getElementById('naming-input').value.trim();
+  if (!n) return;
+  S.charName = n; save();
+  document.getElementById('overlay-naming').classList.remove('active');
+  updateNameLabel();
+  const msg = `${n}だよ！よろしくね！なんでも話しかけてね 😊`;
+  setBubble(msg); speakText(msg);
+}
+function updateNameLabel() {
+  document.getElementById('char-name-label').textContent = S.charName || '…';
+}
+
+// ─── MAIN TAP ───
+function onTap(e) {
+  if (S.speaking) { stopAudio(); return; }
+  if (S.listening) { stopListening(); return; }
+  sparkles(e.clientX, e.clientY);
+  startListening();
+}
+function sparkles(x, y) {
+  ['✨','⭐','💛','🌟','💫'].forEach((em, i) => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'sparkle'; el.textContent = em;
+      el.style.cssText = `left:${x+(Math.random()-.5)*80}px;top:${y+(Math.random()-.5)*80}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 850);
+    }, i*55);
+  });
+}
+
+// ─── SPEECH RECOGNITION ───
+let recog = null;
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { setBubble('このブラウザでは音声が使えないみたい…💦'); return; }
+  recog = new SR();
+  recog.lang = 'ja-JP'; recog.continuous = false; recog.interimResults = false;
+  S.listening = true; charState('listening');
+  setStatus('listening','きいてるよ…');
+  setBubble('なに？なに？話して！👂');
+  recog.onresult = e => {
+    S.listening = false;
+    charState('thinking'); setStatus('','考えてるよ…'); setBubble('うーんと… 🤔');
+    processInput(e.results[0][0].transcript);
+  };
+  recog.onerror = e => {
+    S.listening = false; charState('idle'); setStatus('','');
+    setBubble(e.error==='no-speech' ? 'きこえなかったよ。もう一回タップして！' : 'うまく聞こえなかった…もう一度！');
+  };
+  recog.onend = () => { if (S.listening){ S.listening=false; charState('idle'); setStatus('',''); } };
+  recog.start();
+}
+function stopListening() {
+  recog?.stop(); recog = null;
+  S.listening = false; charState('idle'); setStatus('','');
+  setBubble('タップして話しかけてね！');
+}
+
+// ─── AI CONVERSATION ───
+async function processInput(userText) {
+  addLog('user', userText);
+
+  if (S.awaitShare) { handleShare(userText); return; }
+
+  S.history.push({role:'user', content:userText});
+  if (S.history.length > 12) S.history = S.history.slice(-12);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'x-api-key': S.antKey,
+        'anthropic-version':'2023-06-01',
+        'content-type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-opus-4-6',
+        max_tokens:280,
+        system: buildPrompt(),
+        messages: S.history
+      })
+    });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    let txt = data.content[0].text;
+
+    let shared = false;
+    if (txt.includes('[SHARE_WITH_PARENT]')) {
+      shared = true;
+      txt = txt.replace('[SHARE_WITH_PARENT]','').trim();
+      markShared();
+    }
+    // Detect share question
+    if ((txt.includes('おとうさん')||txt.includes('おかあさん')||txt.includes('ほごしゃ'))
+      && (txt.includes('つたえ')||txt.includes('いい？')||txt.includes('はなし'))) {
+      S.awaitShare = true;
+      S.pendingShare = S.logs.slice(-5).map(l=>l.id);
+    }
+
+    S.history.push({role:'assistant', content:txt});
+    addLog('assistant', txt, shared);
+    save();
+    setBubble(txt); charState('talking'); setStatus('talking','はなしてるよ…'); S.speaking = true;
+    await speakText(txt);
+    charState('idle'); setStatus('',''); S.speaking = false;
+    setBubble('タップして話しかけてね！');
+  } catch(err) {
+    console.error(err);
+    charState('idle'); setStatus('',''); S.speaking = false;
+    setBubble('うまく話せなかった…もう一回タップして！💦');
+  }
+}
+
+function handleShare(userText) {
+  S.awaitShare = false;
+  const yes = ['うん','はい','いい','いいよ','ok','おけ','おっけ','いいです','いいよ'].some(p => userText.toLowerCase().includes(p));
+  if (yes) {
+    S.logs = S.logs.map(l => S.pendingShare.includes(l.id) ? {...l, shared:true} : l);
+    save();
+    const m = 'わかった！おとうさんやおかあさんに伝えておくね 💛';
+    setBubble(m); speakText(m); addLog('assistant', m, true);
+  } else {
+    const m = 'わかった！ふたりだけのひみつにしておくね 🤫';
+    setBubble(m); speakText(m); addLog('assistant', m, false);
+  }
+  S.pendingShare = [];
+}
+function markShared() {
+  const ids = S.pendingShare;
+  S.logs = S.logs.map(l => ids.includes(l.id) ? {...l, shared:true} : l);
+}
+
+function buildPrompt() {
+  const n = S.charName || 'ロボ';
+  return `あなたは「${n}」という名前のふわふわしたロボットです。7歳の男の子の大切な友達です。
+
+基本の性格：元気で優しく、いつも子供の味方。簡単な言葉で話す。難しい漢字は使わない。
+${S.personality ? `追加の性格設定：${S.personality}` : ''}
+
+会話ルール：
+- 短く（1〜3文以内）子供にわかる言葉で話す
+- 絵文字は1〜2個まで
+- 悩みや相談には共感してから答える
+- 子供が悩みや秘密を打ち明けた後は「このこと、おとうさんやおかあさんに伝えてもいい？」と確認する
+- 子供が許可したら返答の最後に [SHARE_WITH_PARENT] を付ける（子供には見えない）
+- 許可しなかったら「ふたりだけのひみつにしておくね」と答える
+- 危険・緊急のことは必ずおとうさん・おかあさんに話すよう伝える`;
+}
+
+// ─── TTS (OpenAI) ───
+async function speakText(text) {
+  const clean = text.replace(/\[.*?\]/g,'').replace(/[\u{1F000}-\u{1FFFF}]/gu,'').trim();
+  if (!clean) return;
+  try {
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method:'POST',
+      headers:{'Authorization':`Bearer ${S.oaiKey}`,'Content-Type':'application/json'},
+      body: JSON.stringify({model:'tts-1', voice:'nova', input:clean, speed:1.05})
+    });
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    return new Promise(resolve => {
+      const a = new Audio(url);
+      S.currentAudio = a;
+      a.onended = () => { URL.revokeObjectURL(url); S.currentAudio=null; resolve(); };
+      a.onerror = () => resolve();
+      a.play().catch(() => resolve());
+    });
+  } catch(e) { console.error('TTS',e); }
+}
+function stopAudio() {
+  S.currentAudio?.pause(); S.currentAudio = null;
+  S.speaking = false; charState('idle'); setStatus('','');
+  setBubble('タップして話しかけてね！');
+}
+
+// ─── UI HELPERS ───
+function charState(s) {
+  const c = document.getElementById('char');
+  c.classList.remove('listening','talking','thinking');
+  if (s!=='idle') c.classList.add(s);
+}
+function setBubble(t) { document.getElementById('bubble').textContent = t; }
+function setStatus(type, txt) {
+  const d = document.getElementById('sdot'), l = document.getElementById('stxt');
+  d.className = 'sdot'; if (type) d.classList.add(type); l.textContent = txt;
+}
+
+// ─── LOG ───
+function addLog(role, content, shared=false) {
+  S.logs.push({
+    id: Date.now()+Math.random(), role, content, shared,
+    date: new Date().toLocaleDateString('ja-JP'),
+    time: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})
+  });
+  if (S.logs.length>300) S.logs = S.logs.slice(-300);
+}
+
+// ─── REMINDERS ───
+function checkReminders() {
+  if (document.getElementById('screen-main').classList.contains('active') === false) return;
+  if (S.listening||S.speaking) return;
+  const now = new Date();
+  const t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const dk = now.toDateString()+t;
+  S.reminders.forEach(r => {
+    const k = r.id+dk;
+    if (r.time===t && !S.firedToday.has(k)) {
+      S.firedToday.add(k);
+      fireReminder(r);
+    }
+  });
+}
+async function fireReminder(r) {
+  const el = document.createElement('div');
+  el.className = 'rem-alert'; el.textContent = '⏰ '+r.label;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 4500);
+  setBubble(r.label); charState('talking'); S.speaking=true;
+  await speakText(r.label);
+  charState('idle'); S.speaking=false;
+  setBubble('タップして話しかけてね！');
+}
+
+// ─── PARENT LOGIN ───
+function goParent() { S.pinBuf=''; updatePin(); document.getElementById('pin-err').textContent=''; showScreen('parent-login'); }
+function pin(v) {
+  if (v==='del') { S.pinBuf=S.pinBuf.slice(0,-1); }
+  else if (v==='ok') { checkPin(); return; }
+  else { if (S.pinBuf.length>=4) return; S.pinBuf+=v; if (S.pinBuf.length===4) setTimeout(checkPin,200); }
+  updatePin();
+}
+function updatePin() {
+  for(let i=0;i<4;i++) document.getElementById('p'+i).classList.toggle('on', i<S.pinBuf.length);
+}
+function checkPin() {
+  if (S.pinBuf===S.password) { S.pinBuf=''; showScreen('parent-settings'); }
+  else {
+    document.getElementById('pin-err').textContent='パスワードが違います';
+    S.pinBuf=''; updatePin();
+    setTimeout(()=>document.getElementById('pin-err').textContent='', 2000);
+  }
+}
+
+// ─── PARENT SETTINGS ───
+function populateSettings() {
+  document.getElementById('p-name').value = S.charName;
+  document.getElementById('p-per').value = S.personality;
+  renderRems(); renderLogs();
+}
+function showTab(t) {
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tb-'+t).classList.add('active');
+  document.getElementById('tp-'+t).classList.add('active');
+  if (t==='log') renderLogs();
+  if (t==='rem') renderRems();
+}
+function saveCharSettings() {
+  S.charName = document.getElementById('p-name').value.trim();
+  S.personality = document.getElementById('p-per').value.trim();
+  save(); updateNameLabel();
+  const ok = document.createElement('div');
+  ok.className='rem-alert'; ok.textContent='✅ 保存しました';
+  document.body.appendChild(ok); setTimeout(()=>ok.remove(),2500);
+}
+
+// Reminders
+function renderRems() {
+  const list = document.getElementById('rem-list');
+  list.innerHTML = S.reminders.length===0
+    ? '<div style="color:#ccc;font-size:14px;text-align:center;padding:14px;">リマインダーはまだありません</div>'
+    : S.reminders.map(r=>`
+      <div class="rem-item">
+        <div><div class="rem-lbl">${esc(r.label)}</div><div class="rem-time">⏰ ${r.time}</div></div>
+        <button class="rem-del" onclick="delRem('${r.id}')">🗑</button>
+      </div>`).join('');
+}
+function showAddRem() { document.getElementById('add-rem-form').style.display='flex'; document.getElementById('btn-add-rem').style.display='none'; }
+function hideAddRem() { document.getElementById('add-rem-form').style.display='none'; document.getElementById('btn-add-rem').style.display='block'; }
+function addRem() {
+  const lbl = document.getElementById('rem-lbl').value.trim();
+  const t = document.getElementById('rem-time').value;
+  if (!lbl) return alert('内容を入力してください');
+  if (!t) return alert('時間を設定してください');
+  S.reminders.push({id:Date.now().toString(), label:lbl, time:t});
+  save(); document.getElementById('rem-lbl').value=''; document.getElementById('rem-time').value='';
+  hideAddRem(); renderRems();
+}
+function delRem(id) { S.reminders=S.reminders.filter(r=>r.id!==id); save(); renderRems(); }
+
+// Logs
+function renderLogs() {
+  const c = document.getElementById('log-container');
+  const shared = S.logs.filter(l=>l.shared);
+  if (shared.length===0) {
+    c.innerHTML=`<div class="no-log">子供が共有を許可した会話はまだありません。<br><br>ロボットが「おとうさん・おかあさんに<br>伝えていい？」と聞いて、<br>子供が許可した内容がここに表示されます。</div>`;
+    return;
+  }
+  const byDate = {};
+  shared.forEach(l => { (byDate[l.date]||(byDate[l.date]=[])).push(l); });
+  c.innerHTML = Object.entries(byDate).reverse().map(([date,msgs])=>`
+    <div class="log-item">
+      <div class="log-date">📅 ${date}</div>
+      <span class="log-badge">✅ 子供が共有を許可</span>
+      ${msgs.map(m=>`<div class="lmsg ${m.role}"><span class="role">${m.role==='user'?(S.charName||'子ども'):'🤖'}：</span>${esc(m.content)}</div>`).join('')}
+    </div>`).join('');
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
