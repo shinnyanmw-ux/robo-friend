@@ -591,23 +591,24 @@ const S = {
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
-  load(); // まずlocalStorageから読み込む
-  // QRコードから引き継ぎ（loadの後に処理して上書きされないようにする）
   const params = new URLSearchParams(location.search);
-  if (params.get('ant')) {
+  const isQr = !!params.get('ant');
+
+  if (isQr) {
+    // QRから来た場合：APIキーをstateに保存してURLをクリア
     S.antKey = params.get('ant');
     S.oaiKey = params.get('oai') || '';
     save();
     history.replaceState({}, '', location.pathname);
-    // 設定画面のフォームにも反映
-    setTimeout(() => {
-      const antEl = document.getElementById('s-ant');
-      const oaiEl = document.getElementById('s-oai');
-      if (antEl) antEl.value = S.antKey;
-      if (oaiEl) oaiEl.value = S.oaiKey;
-    }, 100);
   }
-  if (!S.antKey || !S.oaiKey || !S.password || !S.adminPw) {
+
+  load(); // localStorageから読み込む（QR保存後なのでAPIキーは保持される）
+
+  if (isQr && !S.password) {
+    // QRから来た かつ 保護者PWが未設定 → QR専用セットアップ画面
+    showScreen('qr-setup');
+  } else if (!S.antKey || !S.oaiKey || !S.password || !S.adminPw) {
+    // 通常の初回セットアップ
     showScreen('setup');
   } else {
     showScreen('main');
