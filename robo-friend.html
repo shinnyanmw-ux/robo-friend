@@ -314,6 +314,30 @@ body {
   </div>
 </div>
 
+<!-- ===== QR SETUP ===== -->
+<div class="screen" id="screen-qr-setup">
+  <div class="setup-card">
+    <div style="display:inline-block;background:#FFF3CD;color:#E65100;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;margin-bottom:16px;">📱 QRコードから設定中</div>
+    <h2>🔧 はじめての設定</h2>
+    <p class="sub">保護者用のパスワードと<br>ロボットの性格を設定してください。</p>
+    <div style="background:#f9f9f9;border-radius:12px;padding:14px 16px;font-size:12px;color:#bbb;font-weight:700;line-height:1.8;margin-bottom:16px;">
+      🔑 APIキーと管理者パスワードは<br>
+      <span style="color:#ffb347;">管理者によって設定済みです。</span><br>
+      変更が必要な場合は管理者にお問い合わせください。
+    </div>
+    <div class="fg">
+      <label>保護者用パスワード（数字4桁）</label>
+      <input type="password" id="q-pw" placeholder="例：1234" maxlength="4" inputmode="numeric">
+    </div>
+    <hr style="border:none;border-top:2px dashed #f0e8e0;margin:20px 0;">
+    <div class="fg">
+      <label>ロボットの性格・追加設定（任意）</label>
+      <textarea id="q-per" placeholder="例：少しおっちょこちょいで、おやじギャグが好き。虫が大好き。"></textarea>
+    </div>
+    <button class="btn-p" onclick="completeQrSetup()">はじめる！</button>
+  </div>
+</div>
+
 <!-- ===== NAMING OVERLAY ===== -->
 <div id="overlay-naming">
   <div style="font-size:80px">🌟</div>
@@ -619,6 +643,14 @@ function showScreen(name) {
 }
 
 // ─── SETUP ───
+function completeQrSetup() {
+  const pw  = document.getElementById('q-pw').value.trim();
+  const per = document.getElementById('q-per').value.trim();
+  if (!/^\d{4}$/.test(pw)) return alert('パスワードは数字4桁で入力してください');
+  S.password = pw; S.personality = per;
+  save(); showScreen('main'); setTimeout(showNaming, 400);
+}
+
 function completeSetup() {
   const ant = document.getElementById('s-ant').value.trim();
   const oai = document.getElementById('s-oai').value.trim();
