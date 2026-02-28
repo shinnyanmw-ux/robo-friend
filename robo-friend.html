@@ -258,6 +258,20 @@ body {
   cursor:pointer; font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,.07);
 }
 </style>
+<style id="print-style">
+@media print {
+  body > *:not(#print-area) { display:none !important; }
+  #print-area {
+    display:block !important;
+    position:fixed; inset:0;
+    background:white;
+    padding:48px;
+    font-family:'Nunito','Hiragino Maru Gothic ProN',sans-serif;
+    text-align:center;
+  }
+}
+#print-area { display:none; }
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -272,14 +286,24 @@ body {
     <p class="sub">保護者の方が設定してください。<br>入力した情報はこのデバイス内にのみ保存されます。</p>
     <div class="fg">
       <label>Anthropic APIキー</label>
-      <textarea id="s-ant" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="height:64px;word-break:break-all;font-size:12px;"></textarea>
+      <div style="position:relative;">
+        <input type="password" id="s-ant" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="padding-right:48px;">
+        <button type="button" onclick="toggleVis('s-ant',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;">👁</button>
+      </div>
     </div>
     <div class="fg">
       <label>OpenAI APIキー</label>
-      <textarea id="s-oai" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="height:64px;word-break:break-all;font-size:12px;"></textarea>
+      <div style="position:relative;">
+        <input type="password" id="s-oai" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="padding-right:48px;">
+        <button type="button" onclick="toggleVis('s-oai',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;">👁</button>
+      </div>
     </div>
     <div class="fg">
-      <label>保護者用パスワード（数字4桁）</label>
+      <label>管理者パスワード（数字4桁）※APIキー変更に使用</label>
+      <input type="password" id="s-apw" placeholder="例：9999" maxlength="4" inputmode="numeric">
+    </div>
+    <div class="fg">
+      <label>保護者用パスワード（数字4桁）※キャラ設定・リマインダーに使用</label>
       <input type="password" id="s-pw" placeholder="例：1234" maxlength="4" inputmode="numeric">
     </div>
     <div class="fg">
@@ -303,7 +327,8 @@ body {
 <div class="screen" id="screen-main">
   <div class="top-bar" style="display:flex;gap:10px;">
     <button class="parent-btn" onclick="showMemoOverlay()">📝 メモ</button>
-    <button class="parent-btn" onclick="goParent()">🔒 ほごしゃ</button>
+    <button class="parent-btn" onclick="goParent('parent')">🔒 ほごしゃ</button>
+    <button class="parent-btn" onclick="goParent('admin')" style="background:#fff0f0;color:#ffaaaa;">🔑</button>
   </div>
 
   <div class="character-area">
@@ -357,7 +382,7 @@ body {
 <div class="screen" id="screen-parent-login">
   <button class="back-btn" onclick="showScreen('main')" style="position:absolute;top:20px;left:20px;">← もどる</button>
   <div class="lock-ico">🔒</div>
-  <div class="phead">ほごしゃメニュー</div>
+  <div class="phead" id="pin-title">ほごしゃメニュー</div>
   <div class="psub">パスワードを入力してください</div>
   <div class="pin-row" id="pin-row">
     <div class="pin-dot" id="p0"></div><div class="pin-dot" id="p1"></div>
@@ -418,7 +443,6 @@ body {
         </div>
       </div>
       <button class="btn-p" onclick="saveCharSettings()">保存する</button>
-      <button class="btn-s" style="width:100%;margin-top:10px;" onclick="showQrOverlay()">📱 QRコードで別の端末に引き継ぐ</button>
     </div>
 
     <!-- Reminders tab -->
@@ -450,6 +474,66 @@ body {
   </div>
 </div>
 
+<!-- ===== ADMIN SETTINGS ===== -->
+<div class="screen" id="screen-admin-settings">
+  <div class="ps-header">
+    <div class="ps-header-row">
+      <h2>🔑 管理者メニュー</h2>
+      <button class="back-btn" onclick="showScreen('main')">もどる</button>
+    </div>
+  </div>
+  <div class="ps-body" style="max-width:480px;margin:0 auto;padding:24px;">
+    <div class="sec">
+      <h3>APIキー設定</h3>
+      <p style="font-size:13px;color:#aaa;margin-bottom:16px;line-height:1.7;">このページは管理者パスワードでのみアクセスできます。</p>
+      <div class="fg">
+        <label>Anthropic APIキー</label>
+        <div style="position:relative;">
+          <input type="password" id="a-ant" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="padding-right:48px;" placeholder="sk-ant-...">
+          <button type="button" onclick="toggleVis('a-ant',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;">👁</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>OpenAI APIキー</label>
+        <div style="position:relative;">
+          <input type="password" id="a-oai" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="padding-right:48px;" placeholder="sk-...">
+          <button type="button" onclick="toggleVis('a-oai',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;">👁</button>
+        </div>
+      </div>
+      <button class="btn-p" onclick="saveApiKeys()">保存する</button>
+    </div>
+    <div class="sec" style="margin-top:24px;">
+      <h3>管理者パスワード変更</h3>
+      <div class="fg">
+        <label>新しい管理者パスワード（数字4桁）</label>
+        <input type="password" id="a-newpw" maxlength="4" inputmode="numeric" placeholder="例：9999">
+      </div>
+      <button class="btn-p" onclick="saveAdminPw()">パスワードを変更する</button>
+    </div>
+    <div class="sec" style="margin-top:24px;">
+      <h3>QRコードで引き継ぐ</h3>
+      <p style="font-size:13px;color:#aaa;margin-bottom:12px;line-height:1.7;">APIキーを別の端末に引き継ぎます。</p>
+      <button class="btn-s" style="width:100%;margin-bottom:10px;" onclick="showQrOverlay()">📱 QRコードを表示する</button>
+      <button class="btn-p" onclick="exportQrPdf()">📄 QRコードをPDFで保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT AREA -->
+<div id="print-area">
+  <div style="font-size:28px;font-weight:900;color:#E8896A;margin-bottom:8px;">ともだちロボ　設定QRコード</div>
+  <div style="font-size:14px;color:#999;margin-bottom:24px;">このQRコードを読み取ると設定が自動で入力されます</div>
+  <div id="print-qr" style="display:inline-block;background:white;padding:16px;border:2px solid #eee;border-radius:12px;"></div>
+  <div style="margin-top:24px;font-size:13px;color:#aaa;line-height:2;">
+    ① スマホやタブレットのカメラでQRコードを読み取る<br>
+    ② 開いたページでパスワードと性格設定を入力する<br>
+    ③ 「はじめる！」を押して完了
+  </div>
+  <div style="margin-top:20px;background:#fff0f0;border-radius:8px;padding:12px 20px;display:inline-block;">
+    <div style="font-size:12px;color:#ff8888;font-weight:700;">⚠️ このQRコードにはAPIキーが含まれます。取り扱いにご注意ください。</div>
+  </div>
+</div>
+
 <!-- ===== QR OVERLAY ===== -->
 <div id="overlay-qr" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(255,248,242,.97);backdrop-filter:blur(4px);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;">
   <div style="font-size:22px;font-weight:900;color:#E8896A;">📱 設定を引き継ぐ</div>
@@ -476,7 +560,7 @@ body {
 // ─── STATE ───
 const S = {
   charName:'', password:'', antKey:'', oaiKey:'', personality:'',
-  reminders:[], memos:[], history:[], pinBuf:'', voice:'shimmer', speed:0.85, awaitMemo:false,
+  reminders:[], memos:[], history:[], pinBuf:'', adminPw:'', voice:'shimmer', speed:0.85, awaitMemo:false, pinTarget:'parent',
   listening:false, speaking:false, awaitShare:false,
   pendingShare:[], currentAudio:null, firedToday:new Set(),
 };
@@ -499,7 +583,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (oaiEl) oaiEl.value = S.oaiKey;
     }, 100);
   }
-  if (!S.antKey || !S.oaiKey || !S.password) {
+  if (!S.antKey || !S.oaiKey || !S.password || !S.adminPw) {
     showScreen('setup');
   } else {
     showScreen('main');
@@ -516,14 +600,14 @@ function load() {
     S.charName = d.charName||''; S.password = d.password||'';
     S.antKey = d.antKey||''; S.oaiKey = d.oaiKey||'';
     S.personality = d.personality||'';
-    S.reminders = d.reminders||[]; S.memos = d.memos||[]; S.voice = d.voice||'shimmer'; S.speed = d.speed||0.85;
+    S.reminders = d.reminders||[]; S.memos = d.memos||[]; S.adminPw = d.adminPw||''; S.voice = d.voice||'shimmer'; S.speed = d.speed||0.85;
   } catch(e){}
 }
 function save() {
   localStorage.setItem('robo-v2', JSON.stringify({
     charName:S.charName, password:S.password, antKey:S.antKey,
     oaiKey:S.oaiKey, personality:S.personality,
-    reminders:S.reminders, memos:S.memos, voice:S.voice, speed:S.speed,
+    reminders:S.reminders, memos:S.memos, adminPw:S.adminPw, voice:S.voice, speed:S.speed,
   }));
 }
 
@@ -542,8 +626,11 @@ function completeSetup() {
   const per = document.getElementById('s-per').value.trim();
   if (!ant) return alert('AnthropicのAPIキーを入力してください');
   if (!oai) return alert('OpenAIのAPIキーを入力してください');
-  if (!/^\d{4}$/.test(pw)) return alert('パスワードは数字4桁で入力してください');
-  S.antKey = ant; S.oaiKey = oai; S.password = pw; S.personality = per;
+  const apw = document.getElementById('s-apw').value.trim();
+  if (!/^\d{4}$/.test(apw)) return alert('管理者パスワードは数字4桁で入力してください');
+  if (!/^\d{4}$/.test(pw)) return alert('保護者パスワードは数字4桁で入力してください');
+  if (apw === pw) return alert('管理者パスワードと保護者パスワードは別の数字にしてください');
+  S.antKey = ant; S.oaiKey = oai; S.password = pw; S.adminPw = apw; S.personality = per;
   save(); showScreen('main'); setTimeout(showNaming, 400);
 }
 
@@ -778,7 +865,7 @@ async function fireReminder(r) {
 }
 
 // ─── PARENT LOGIN ───
-function goParent() { S.pinBuf=''; updatePin(); document.getElementById('pin-err').textContent=''; showScreen('parent-login'); }
+function goParent(target) { S.pinTarget = target||'parent'; S.pinBuf=''; updatePin(); document.getElementById('pin-err').textContent=''; document.getElementById('pin-title').textContent = target==='admin' ? '🔑 管理者メニュー' : '🔒 ほごしゃメニュー'; showScreen('parent-login'); }
 function pin(v) {
   if (v==='del') { S.pinBuf=S.pinBuf.slice(0,-1); }
   else if (v==='ok') { checkPin(); return; }
@@ -789,8 +876,16 @@ function updatePin() {
   for(let i=0;i<4;i++) document.getElementById('p'+i).classList.toggle('on', i<S.pinBuf.length);
 }
 function checkPin() {
-  if (S.pinBuf===S.password) { S.pinBuf=''; showScreen('parent-settings'); }
-  else {
+  const correct = S.pinTarget === 'admin' ? S.adminPw : S.password;
+  if (S.pinBuf === correct) {
+    S.pinBuf='';
+    if (S.pinTarget === 'admin') {
+    showScreen('admin-settings');
+    document.getElementById('a-ant').value = S.antKey;
+    document.getElementById('a-oai').value = S.oaiKey;
+  }
+    else showScreen('parent-settings');
+  } else {
     document.getElementById('pin-err').textContent='パスワードが違います';
     S.pinBuf=''; updatePin();
     setTimeout(()=>document.getElementById('pin-err').textContent='', 2000);
@@ -869,6 +964,44 @@ function renderMemos() {
 }
 function delMemo(id) { S.memos=S.memos.filter(m=>m.id!==id); save(); renderMemos(); }
 
+function exportQrPdf() {
+  // 印刷エリアにQRコードを生成
+  const params = new URLSearchParams({ ant: S.antKey, oai: S.oaiKey });
+  const url = location.origin + location.pathname + '?' + params.toString();
+  const printQr = document.getElementById('print-qr');
+  printQr.innerHTML = '';
+  new QRCode(printQr, {
+    text: url,
+    width: 240,
+    height: 240,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.L,
+  });
+  setTimeout(() => {
+    window.print();
+  }, 300);
+}
+function saveApiKeys() {
+  const ant = document.getElementById('a-ant').value.trim();
+  const oai = document.getElementById('a-oai').value.trim();
+  if (!ant) return alert('Anthropic APIキーを入力してください');
+  if (!oai) return alert('OpenAI APIキーを入力してください');
+  S.antKey = ant; S.oaiKey = oai; save();
+  const ok = document.createElement('div');
+  ok.className='rem-alert'; ok.textContent='✅ APIキーを保存しました';
+  document.body.appendChild(ok); setTimeout(()=>ok.remove(), 2500);
+}
+function saveAdminPw() {
+  const pw = document.getElementById('a-newpw').value.trim();
+  if (!/^\d{4}$/.test(pw)) return alert('数字4桁で入力してください');
+  if (pw === S.password) return alert('保護者パスワードと同じにはできません');
+  S.adminPw = pw; save();
+  const ok = document.createElement('div');
+  ok.className='rem-alert'; ok.textContent='✅ 管理者パスワードを変更しました';
+  document.body.appendChild(ok); setTimeout(()=>ok.remove(), 2500);
+  document.getElementById('a-newpw').value = '';
+}
 function showQrOverlay() {
   // APIキー2つだけQRに含める（短くして読み取りやすくする）
   const params = new URLSearchParams({
@@ -892,6 +1025,11 @@ function hideQrOverlay() {
   document.getElementById('overlay-qr').style.display = 'none';
 }
 
+function toggleVis(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁'; }
+}
 function updateSpeedLabel(v) {
   const labels = {'0.6':'とてもゆっくり','0.65':'とてもゆっくり','0.7':'ゆっくり','0.75':'ゆっくり','0.8':'少しゆっくり','0.85':'少しゆっくり','0.9':'普通','0.95':'普通','1':'普通','1.05':'少し速め','1.1':'少し速め','1.15':'速め','1.2':'速め'};
   document.getElementById('speed-label').textContent = labels[String(parseFloat(v).toFixed(2))] || '普通';
