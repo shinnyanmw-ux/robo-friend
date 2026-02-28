@@ -258,6 +258,7 @@ body {
   cursor:pointer; font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,.07);
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -271,11 +272,11 @@ body {
     <p class="sub">保護者の方が設定してください。<br>入力した情報はこのデバイス内にのみ保存されます。</p>
     <div class="fg">
       <label>Anthropic APIキー</label>
-      <input type="password" id="s-ant" placeholder="sk-ant-..." autocomplete="off">
+      <textarea id="s-ant" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="height:64px;word-break:break-all;font-size:12px;"></textarea>
     </div>
     <div class="fg">
       <label>OpenAI APIキー</label>
-      <input type="password" id="s-oai" placeholder="sk-..." autocomplete="off">
+      <textarea id="s-oai" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="height:64px;word-break:break-all;font-size:12px;"></textarea>
     </div>
     <div class="fg">
       <label>保護者用パスワード（数字4桁）</label>
@@ -300,7 +301,8 @@ body {
 
 <!-- ===== MAIN (CHILD) ===== -->
 <div class="screen" id="screen-main">
-  <div class="top-bar">
+  <div class="top-bar" style="display:flex;gap:10px;">
+    <button class="parent-btn" onclick="showMemoOverlay()">📝 メモ</button>
     <button class="parent-btn" onclick="goParent()">🔒 ほごしゃ</button>
   </div>
 
@@ -382,7 +384,7 @@ body {
     <div class="tabs">
       <button class="tbtn active" id="tb-char" onclick="showTab('char')">キャラ</button>
       <button class="tbtn" id="tb-rem" onclick="showTab('rem')">リマインダー</button>
-      <button class="tbtn" id="tb-log" onclick="showTab('log')">かいわログ</button>
+      <button class="tbtn" id="tb-memo" onclick="showTab('memo')">メモ</button>
     </div>
   </div>
   <div class="ps-body">
@@ -397,7 +399,26 @@ body {
         <h3>性格・話し方の設定</h3>
         <div class="fg"><textarea id="p-per" style="height:110px" placeholder="例：少しおっちょこちょいで、おやじギャグが好き。虫が大好き。"></textarea></div>
       </div>
+            <div class="sec">
+        <h3>声の設定</h3>
+        <div class="fg">
+          <label>声の種類</label>
+          <select id="p-voice" style="width:100%;padding:11px 15px;border:2px solid #eee;border-radius:12px;font-size:14px;font-family:inherit;outline:none;background:white;">
+            <option value="shimmer">shimmer（柔らかくて優しい）</option>
+            <option value="nova">nova（明るめ）</option>
+            <option value="alloy">alloy（中性的）</option>
+            <option value="fable">fable（表情豊か）</option>
+            <option value="echo">echo（やや低め）</option>
+            <option value="onyx">onyx（落ち着いた低め）</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>話す速さ：<span id="speed-label">普通</span></label>
+          <input type="range" id="p-speed" min="0.6" max="1.2" step="0.05" style="width:100%;accent-color:var(--orange);">
+        </div>
+      </div>
       <button class="btn-p" onclick="saveCharSettings()">保存する</button>
+      <button class="btn-s" style="width:100%;margin-top:10px;" onclick="showQrOverlay()">📱 QRコードで別の端末に引き継ぐ</button>
     </div>
 
     <!-- Reminders tab -->
@@ -417,11 +438,37 @@ body {
       </div>
     </div>
 
-    <!-- Logs tab -->
-    <div class="tpanel" id="tp-log">
-      <div id="log-container"></div>
+    <!-- Memo tab -->
+    <div class="tpanel" id="tp-memo">
+      <div class="sec">
+        <h3>子供のメモ一覧</h3>
+        <p style="font-size:13px;color:#aaa;margin-bottom:14px;line-height:1.7;">「メモして」と話しかけた後に言った内容が保存されます。</p>
+        <div id="memo-container"></div>
+      </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ===== QR OVERLAY ===== -->
+<div id="overlay-qr" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(255,248,242,.97);backdrop-filter:blur(4px);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;">
+  <div style="font-size:22px;font-weight:900;color:#E8896A;">📱 設定を引き継ぐ</div>
+  <div style="font-size:13px;color:#aaa;font-weight:700;text-align:center;line-height:1.8;">このQRコードを新しい端末で読み取ると<br>APIキーが自動で入力されます<br><span style="color:#ffb347;">パスワード・性格設定は別途入力してください</span></div>
+  <div style="background:white;border-radius:20px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.1);">
+    <div id="qr-canvas"></div>
+  </div>
+  <div style="font-size:12px;color:#ffaaaa;font-weight:700;text-align:center;line-height:1.8;">⚠️ このQRコードにはAPIキーが含まれます<br>他人に見せないよう注意してください</div>
+  <button onclick="hideQrOverlay()" style="background:white;border:2px solid #eee;border-radius:999px;padding:12px 32px;font-size:15px;font-weight:700;color:#999;cursor:pointer;font-family:inherit;">とじる</button>
+</div>
+
+<!-- ===== MEMO OVERLAY ===== -->
+<div id="overlay-memo" style="display:none;position:fixed;inset:0;z-index:40;background:rgba(255,248,242,.97);backdrop-filter:blur(4px);flex-direction:column;align-items:center;padding:28px 20px;gap:16px;overflow-y:auto;">
+  <div style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:22px;font-weight:900;color:#E8896A;">📝 モココのメモ</div>
+      <button onclick="hideMemoOverlay()" style="background:white;border:none;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:700;color:#999;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);font-family:inherit;">とじる</button>
+    </div>
+    <div id="child-memo-list"></div>
   </div>
 </div>
 
@@ -429,13 +476,21 @@ body {
 // ─── STATE ───
 const S = {
   charName:'', password:'', antKey:'', oaiKey:'', personality:'',
-  reminders:[], logs:[], history:[], pinBuf:'',
+  reminders:[], memos:[], history:[], pinBuf:'', voice:'shimmer', speed:0.85, awaitMemo:false,
   listening:false, speaking:false, awaitShare:false,
   pendingShare:[], currentAudio:null, firedToday:new Set(),
 };
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
+  // QRコードから引き継ぎ
+  const params = new URLSearchParams(location.search);
+  if (params.get('ant')) {
+    S.antKey = params.get('ant');
+    S.oaiKey = params.get('oai') || '';
+    save();
+    history.replaceState({}, '', location.pathname);
+  }
   load();
   if (!S.antKey || !S.oaiKey || !S.password) {
     showScreen('setup');
@@ -454,14 +509,14 @@ function load() {
     S.charName = d.charName||''; S.password = d.password||'';
     S.antKey = d.antKey||''; S.oaiKey = d.oaiKey||'';
     S.personality = d.personality||'';
-    S.reminders = d.reminders||[]; S.logs = d.logs||[];
+    S.reminders = d.reminders||[]; S.memos = d.memos||[]; S.voice = d.voice||'shimmer'; S.speed = d.speed||0.85;
   } catch(e){}
 }
 function save() {
   localStorage.setItem('robo-v2', JSON.stringify({
     charName:S.charName, password:S.password, antKey:S.antKey,
     oaiKey:S.oaiKey, personality:S.personality,
-    reminders:S.reminders, logs:S.logs,
+    reminders:S.reminders, memos:S.memos, voice:S.voice, speed:S.speed,
   }));
 }
 
@@ -506,7 +561,11 @@ function updateNameLabel() {
 // ─── MAIN TAP ───
 function onTap(e) {
   if (S.speaking) { stopAudio(); return; }
-  if (S.listening) { stopListening(); return; }
+  if (S.listening) {
+    sparkles(e.clientX, e.clientY);
+    stopListening();
+    return;
+  }
   sparkles(e.clientX, e.clientY);
   startListening();
 }
@@ -528,33 +587,69 @@ function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { setBubble('このブラウザでは音声が使えないみたい…💦'); return; }
   recog = new SR();
-  recog.lang = 'ja-JP'; recog.continuous = false; recog.interimResults = false;
-  S.listening = true; charState('listening');
+  recog.lang = 'ja-JP'; recog.continuous = true; recog.interimResults = true;
+  S.listening = true; S.transcript = ''; charState('listening');
   setStatus('listening','きいてるよ…');
-  setBubble('なに？なに？話して！👂');
+  setBubble('話してね！もう一度タップしたら送るよ👂');
   recog.onresult = e => {
-    S.listening = false;
-    charState('thinking'); setStatus('','考えてるよ…'); setBubble('うーんと… 🤔');
-    processInput(e.results[0][0].transcript);
+    let interim = '';
+    let final = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    S.transcript = final || interim;
+    setBubble('「' + S.transcript + '」👂');
   };
   recog.onerror = e => {
     S.listening = false; charState('idle'); setStatus('','');
-    setBubble(e.error==='no-speech' ? 'きこえなかったよ。もう一回タップして！' : 'うまく聞こえなかった…もう一度！');
+    setBubble('マイクエラー：' + e.error);
   };
   recog.onend = () => { if (S.listening){ S.listening=false; charState('idle'); setStatus('',''); } };
   recog.start();
 }
 function stopListening() {
   recog?.stop(); recog = null;
-  S.listening = false; charState('idle'); setStatus('','');
-  setBubble('タップして話しかけてね！');
+  S.listening = false;
+  if (S.transcript && S.transcript.trim()) {
+    charState('thinking'); setStatus('','考えてるよ…');
+    setBubble('「' + S.transcript + '」うーんと…🤔');
+    processInput(S.transcript.trim());
+    S.transcript = '';
+  } else {
+    charState('idle'); setStatus('','');
+    setBubble('きこえなかったよ。もう一回タップして！');
+  }
 }
 
 // ─── AI CONVERSATION ───
 async function processInput(userText) {
-  addLog('user', userText);
+  // メモモード：前の発言で「メモして」と言っていたら今の発言を保存
+  if (S.awaitMemo) {
+    S.awaitMemo = false;
+    S.memos.push({
+      id: Date.now().toString(),
+      text: userText,
+      date: new Date().toLocaleDateString('ja-JP'),
+      time: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})
+    });
+    save();
+    const m = '「' + userText + '」おぼえたよ！ 📝';
+    setBubble(m); charState('talking'); setStatus('talking','はなしてるよ…'); S.speaking = true;
+    await speakText(m);
+    charState('idle'); setStatus('',''); S.speaking = false;
+    return;
+  }
 
-  if (S.awaitShare) { handleShare(userText); return; }
+  // メモキーワード検出
+  if (userText.includes('メモして') || userText.includes('めもして') || userText.includes('覚えておいて') || userText.includes('おぼえておいて')) {
+    S.awaitMemo = true;
+    const m = 'なにをおぼえておく？話して！';
+    setBubble(m); charState('talking'); setStatus('talking','はなしてるよ…'); S.speaking = true;
+    await speakText(m);
+    charState('idle'); setStatus('',''); S.speaking = false;
+    return;
+  }
 
   S.history.push({role:'user', content:userText});
   if (S.history.length > 12) S.history = S.history.slice(-12);
@@ -575,55 +670,23 @@ async function processInput(userText) {
         messages: S.history
       })
     });
-    if (!res.ok) throw new Error(res.status);
+    if (!res.ok) { const errBody = await res.text(); throw new Error(res.status + ' ' + errBody); }
     const data = await res.json();
-    let txt = data.content[0].text;
-
-    let shared = false;
-    if (txt.includes('[SHARE_WITH_PARENT]')) {
-      shared = true;
-      txt = txt.replace('[SHARE_WITH_PARENT]','').trim();
-      markShared();
-    }
-    // Detect share question
-    if ((txt.includes('おとうさん')||txt.includes('おかあさん')||txt.includes('ほごしゃ'))
-      && (txt.includes('つたえ')||txt.includes('いい？')||txt.includes('はなし'))) {
-      S.awaitShare = true;
-      S.pendingShare = S.logs.slice(-5).map(l=>l.id);
-    }
+    const txt = data.content[0].text;
 
     S.history.push({role:'assistant', content:txt});
-    addLog('assistant', txt, shared);
     save();
     setBubble(txt); charState('talking'); setStatus('talking','はなしてるよ…'); S.speaking = true;
     await speakText(txt);
     charState('idle'); setStatus('',''); S.speaking = false;
-    setBubble('タップして話しかけてね！');
   } catch(err) {
     console.error(err);
     charState('idle'); setStatus('',''); S.speaking = false;
-    setBubble('うまく話せなかった…もう一回タップして！💦');
+    setBubble('エラー：' + (err.message || err.toString()));
   }
 }
 
-function handleShare(userText) {
-  S.awaitShare = false;
-  const yes = ['うん','はい','いい','いいよ','ok','おけ','おっけ','いいです','いいよ'].some(p => userText.toLowerCase().includes(p));
-  if (yes) {
-    S.logs = S.logs.map(l => S.pendingShare.includes(l.id) ? {...l, shared:true} : l);
-    save();
-    const m = 'わかった！おとうさんやおかあさんに伝えておくね 💛';
-    setBubble(m); speakText(m); addLog('assistant', m, true);
-  } else {
-    const m = 'わかった！ふたりだけのひみつにしておくね 🤫';
-    setBubble(m); speakText(m); addLog('assistant', m, false);
-  }
-  S.pendingShare = [];
-}
-function markShared() {
-  const ids = S.pendingShare;
-  S.logs = S.logs.map(l => ids.includes(l.id) ? {...l, shared:true} : l);
-}
+
 
 function buildPrompt() {
   const n = S.charName || 'ロボ';
@@ -636,9 +699,6 @@ ${S.personality ? `追加の性格設定：${S.personality}` : ''}
 - 短く（1〜3文以内）子供にわかる言葉で話す
 - 絵文字は1〜2個まで
 - 悩みや相談には共感してから答える
-- 子供が悩みや秘密を打ち明けた後は「このこと、おとうさんやおかあさんに伝えてもいい？」と確認する
-- 子供が許可したら返答の最後に [SHARE_WITH_PARENT] を付ける（子供には見えない）
-- 許可しなかったら「ふたりだけのひみつにしておくね」と答える
 - 危険・緊急のことは必ずおとうさん・おかあさんに話すよう伝える`;
 }
 
@@ -650,9 +710,9 @@ async function speakText(text) {
     const res = await fetch('https://api.openai.com/v1/audio/speech', {
       method:'POST',
       headers:{'Authorization':`Bearer ${S.oaiKey}`,'Content-Type':'application/json'},
-      body: JSON.stringify({model:'tts-1', voice:'nova', input:clean, speed:1.05})
+      body: JSON.stringify({model:'tts-1', voice:S.voice, input:clean, speed:S.speed})
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) { const e = await res.text(); setBubble('音声エラー：' + e); throw new Error(e); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     return new Promise(resolve => {
@@ -682,15 +742,7 @@ function setStatus(type, txt) {
   d.className = 'sdot'; if (type) d.classList.add(type); l.textContent = txt;
 }
 
-// ─── LOG ───
-function addLog(role, content, shared=false) {
-  S.logs.push({
-    id: Date.now()+Math.random(), role, content, shared,
-    date: new Date().toLocaleDateString('ja-JP'),
-    time: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})
-  });
-  if (S.logs.length>300) S.logs = S.logs.slice(-300);
-}
+
 
 // ─── REMINDERS ───
 function checkReminders() {
@@ -742,19 +794,26 @@ function checkPin() {
 function populateSettings() {
   document.getElementById('p-name').value = S.charName;
   document.getElementById('p-per').value = S.personality;
-  renderRems(); renderLogs();
+  document.getElementById('p-voice').value = S.voice;
+  const sp = document.getElementById('p-speed');
+  sp.value = S.speed;
+  updateSpeedLabel(S.speed);
+  sp.oninput = () => updateSpeedLabel(sp.value);
+  renderRems(); renderMemos();
 }
 function showTab(t) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tb-'+t).classList.add('active');
   document.getElementById('tp-'+t).classList.add('active');
-  if (t==='log') renderLogs();
+  if (t==='memo') renderMemos();
   if (t==='rem') renderRems();
 }
 function saveCharSettings() {
   S.charName = document.getElementById('p-name').value.trim();
   S.personality = document.getElementById('p-per').value.trim();
+  S.voice = document.getElementById('p-voice').value;
+  S.speed = parseFloat(document.getElementById('p-speed').value);
   save(); updateNameLabel();
   const ok = document.createElement('div');
   ok.className='rem-alert'; ok.textContent='✅ 保存しました';
@@ -785,22 +844,103 @@ function addRem() {
 }
 function delRem(id) { S.reminders=S.reminders.filter(r=>r.id!==id); save(); renderRems(); }
 
-// Logs
-function renderLogs() {
-  const c = document.getElementById('log-container');
-  const shared = S.logs.filter(l=>l.shared);
-  if (shared.length===0) {
-    c.innerHTML=`<div class="no-log">子供が共有を許可した会話はまだありません。<br><br>ロボットが「おとうさん・おかあさんに<br>伝えていい？」と聞いて、<br>子供が許可した内容がここに表示されます。</div>`;
+// Memos
+function renderMemos() {
+  const c = document.getElementById('memo-container');
+  if (!S.memos || S.memos.length===0) {
+    c.innerHTML='<div class="no-log">まだメモはありません。<br><br>「メモして」と話しかけてみてね！</div>';
     return;
   }
-  const byDate = {};
-  shared.forEach(l => { (byDate[l.date]||(byDate[l.date]=[])).push(l); });
-  c.innerHTML = Object.entries(byDate).reverse().map(([date,msgs])=>`
-    <div class="log-item">
-      <div class="log-date">📅 ${date}</div>
-      <span class="log-badge">✅ 子供が共有を許可</span>
-      ${msgs.map(m=>`<div class="lmsg ${m.role}"><span class="role">${m.role==='user'?(S.charName||'子ども'):'🤖'}：</span>${esc(m.content)}</div>`).join('')}
+  c.innerHTML = [...S.memos].reverse().map(m=>`
+    <div class="rem-item">
+      <div>
+        <div class="rem-lbl">📝 ${esc(m.text)}</div>
+        <div class="rem-time">${m.date} ${m.time}</div>
+      </div>
+      <button class="rem-del" onclick="delMemo('${m.id}')">🗑</button>
     </div>`).join('');
+}
+function delMemo(id) { S.memos=S.memos.filter(m=>m.id!==id); save(); renderMemos(); }
+
+function showQrOverlay() {
+  // APIキー2つだけQRに含める（短くして読み取りやすくする）
+  const params = new URLSearchParams({
+    ant: S.antKey,
+    oai: S.oaiKey,
+  });
+  const url = location.origin + location.pathname + '?' + params.toString();
+  const qrDiv = document.getElementById('qr-canvas');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, {
+    text: url,
+    width: 280,
+    height: 280,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.L,
+  });
+  document.getElementById('overlay-qr').style.display = 'flex';
+}
+function hideQrOverlay() {
+  document.getElementById('overlay-qr').style.display = 'none';
+}
+
+function updateSpeedLabel(v) {
+  const labels = {'0.6':'とてもゆっくり','0.65':'とてもゆっくり','0.7':'ゆっくり','0.75':'ゆっくり','0.8':'少しゆっくり','0.85':'少しゆっくり','0.9':'普通','0.95':'普通','1':'普通','1.05':'少し速め','1.1':'少し速め','1.15':'速め','1.2':'速め'};
+  document.getElementById('speed-label').textContent = labels[String(parseFloat(v).toFixed(2))] || '普通';
+}
+function showMemoOverlay() {
+  const c = document.getElementById('child-memo-list');
+  if (!S.memos || S.memos.length === 0) {
+    c.innerHTML = '<div style="text-align:center;color:#ccc;font-size:15px;font-weight:700;padding:40px 0;line-height:2;">まだメモがないよ！<br>「メモして」って話しかけてね 📝</div>';
+  } else {
+    c.innerHTML = [...S.memos].reverse().map(m => `
+      <div style="background:white;border-radius:16px;padding:16px 18px;box-shadow:0 4px 16px rgba(0,0,0,.07);margin-bottom:12px;">
+        <div id="memo-view-${m.id}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:17px;font-weight:700;color:#444;line-height:1.5;">📝 ${esc(m.text)}</div>
+            <div style="font-size:12px;color:#bbb;margin-top:6px;font-weight:700;">${m.date} ${m.time}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onclick="startEditMemo('${m.id}', '${esc(m.text)}')" style="background:#FFF3E0;border:none;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#E8896A;cursor:pointer;font-family:inherit;">✏️</button>
+            <button onclick="deleteMemoChild('${m.id}')" style="background:#FFF0F0;border:none;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#ffaaaa;cursor:pointer;font-family:inherit;">🗑</button>
+          </div>
+        </div>
+        <div id="memo-edit-${m.id}" style="display:none;margin-top:8px;">
+          <textarea id="memo-input-${m.id}" style="width:100%;padding:10px;border:2px solid #FFB085;border-radius:10px;font-size:15px;font-family:inherit;outline:none;resize:none;height:72px;">${esc(m.text)}</textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button onclick="saveEditMemo('${m.id}')" style="flex:1;padding:10px;background:linear-gradient(135deg,#FF9470,#FFB84D);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">保存</button>
+            <button onclick="cancelEditMemo('${m.id}')" style="padding:10px 16px;background:white;border:2px solid #eee;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">キャンセル</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+  const ov = document.getElementById('overlay-memo');
+  ov.style.display = 'flex';
+}
+function deleteMemoChild(id) {
+  if (!confirm('このメモを削除する？')) return;
+  S.memos = S.memos.filter(m => m.id !== id);
+  save();
+  showMemoOverlay();
+}
+function startEditMemo(id, text) {
+  document.getElementById('memo-view-' + id).style.display = 'none';
+  document.getElementById('memo-edit-' + id).style.display = 'block';
+}
+function cancelEditMemo(id) {
+  document.getElementById('memo-view-' + id).style.display = 'flex';
+  document.getElementById('memo-edit-' + id).style.display = 'none';
+}
+function saveEditMemo(id) {
+  const newText = document.getElementById('memo-input-' + id).value.trim();
+  if (!newText) return;
+  S.memos = S.memos.map(m => m.id === id ? {...m, text: newText} : m);
+  save();
+  showMemoOverlay(); // 再描画
+}
+function hideMemoOverlay() {
+  document.getElementById('overlay-memo').style.display = 'none';
 }
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
