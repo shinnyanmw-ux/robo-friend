@@ -483,15 +483,22 @@ const S = {
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
-  // QRコードから引き継ぎ
+  load(); // まずlocalStorageから読み込む
+  // QRコードから引き継ぎ（loadの後に処理して上書きされないようにする）
   const params = new URLSearchParams(location.search);
   if (params.get('ant')) {
     S.antKey = params.get('ant');
     S.oaiKey = params.get('oai') || '';
     save();
     history.replaceState({}, '', location.pathname);
+    // 設定画面のフォームにも反映
+    setTimeout(() => {
+      const antEl = document.getElementById('s-ant');
+      const oaiEl = document.getElementById('s-oai');
+      if (antEl) antEl.value = S.antKey;
+      if (oaiEl) oaiEl.value = S.oaiKey;
+    }, 100);
   }
-  load();
   if (!S.antKey || !S.oaiKey || !S.password) {
     showScreen('setup');
   } else {
